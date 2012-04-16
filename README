@@ -1,0 +1,5 @@
+This is an attempt to create a lightweight approach to data handling with ember.js
+
+It is for sure not as sophisticated as ember-data but should cover your basic data needs.
+
+Please note that I have just started learning ember and it's possibilities so I might have used the wrong tools in some places.
