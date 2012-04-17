@@ -1,15 +1,16 @@
-App.Person = App.Model.extend({
+window.App = Em.Application.create();
+App.Person = TD.Model.extend({
   firstName: null,
   lastName: null
 });
-App.Group = App.Model.extend({
+App.Group = TD.Model.extend({
   name: null,
   members: null
 });
-App.PController = App.Controller.create({
+App.PController = TD.Controller.create({
   type: App.Person
 });
-App.GController = App.Controller.create({
+App.GController = TD.Controller.create({
   type: App.Group,
   init: function() {
     this._super();
@@ -62,9 +63,9 @@ test("Test loaded groups", function() {
   equal(deepGroup.constructor, App.Group, "Check group type");
   equal(deepGroup.get('id'), 1, "Test id prop");
   equal(deepGroup.get('name'), 'Group1', "Test id prop");
-  equal(deepGroup.get('members').length, 2, "Member array length");
+  equal(deepGroup.get('members').get('length'), 2, "Member array length");
   equal(deepGroup.get('_status'), 'loaded', "Test status prop");
-  member = deepGroup.get('members')[0];
+  member = deepGroup.get('members').get('firstObject');
   equal(member.constructor, App.Person, "Check member type");
   return equal(member.get('_status'), "loaded", "Check member status");
 });
@@ -125,10 +126,10 @@ test("Same object is returned", function() {
 });
 test("Object has correct path", function() {
   var gStore, p1, p2, pStore;
-  pStore = App.Stores.getStore(App.Person);
-  equal(pStore.get('path'), "App.Stores." + (Em.guidFor(App.Person)));
-  gStore = App.Stores.getStore(App.Group);
-  equal(gStore.get('path'), "App.Stores." + (Em.guidFor(App.Group)));
+  pStore = TD.Stores.getStore(App.Person);
+  equal(pStore.get('path'), "TD.Stores." + (Em.guidFor(App.Person)));
+  gStore = TD.Stores.getStore(App.Group);
+  equal(gStore.get('path'), "TD.Stores." + (Em.guidFor(App.Group)));
   ok(pStore.get('path') !== gStore.get('path'));
   p1 = App.PController.find(1);
   equal(p1.get('_path'), "" + (pStore.get('path')) + "." + (Ember.guidFor(p1)));
@@ -143,20 +144,12 @@ test("Proper array handling", function() {
     firstName: 'dil',
     lastName: 'bert'
   });
-  ps = App.ModelArray.create({
-    store: App.PController.store,
-    content: App.PController.find([1, 2, 92])
-  });
-  console.log("after created");
-  equal(3, ps.get('length'), "All 3 are returned");
+  ps = App.PController.find([1, 2, 92]);
+  equal(ps.get('length'), 3, "All 3 are returned");
   ps.removeAt(1);
-  Ember.run.sync();
-  console.log("after remove", ps.get('content'), ps.get('length'));
-  equal(2, ps.get('length'));
-  ps.removeAt(1);
+  equal(ps.get('length'), 2);
   ps.insertAt(0, App.PController.find(2));
-  ps.removeAt(1);
-  ps.removeAt(0);
+  equal(ps.get('length'), 3);
   con = Em.Object.create({
     acontent: ps,
     alength: (function() {
@@ -164,12 +157,12 @@ test("Proper array handling", function() {
     }).property('acontent')
   });
   Em.run.sync();
-  equal(3, con.get('alength'), "Array is properly linked");
-  ps.removeAt(0);
+  equal(con.get('alength'), 3, "Array is properly linked");
+  ps.removeAt(1);
   Em.run.sync();
-  equal(2, con.get('alength'), "Only two elements are left");
+  equal(con.get('alength'), 2, "Only two elements are left");
   p92 = App.PController.find(92);
   App.PController.remove(p92);
   Em.run.sync();
-  return equal(1, con.get('alength'), "Only one element is left");
+  return equal(con.get('alength'), 1, "Directly from store removed element also dissappears in array and bindings of the array");
 });

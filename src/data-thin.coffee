@@ -1,11 +1,11 @@
-window.App = Em.Application.create()
+window.TD = Em.Namespace.create()
 
-App.Store = Em.Object.extend
+TD.Store = Em.Object.extend
   type: null
   map: null
   init: ->
     @_super()
-    @path = "App.Stores.#{Ember.guidFor @type}"
+    @path = "TD.Stores.#{Ember.guidFor @type}"
     @map = {}
   add: (obj) ->
     guid = Ember.guidFor obj
@@ -25,14 +25,13 @@ App.Store = Em.Object.extend
     delete @map[obj.id] if obj.id
     obj
 
-App.Stores =
+TD.Stores =
   getStore: (typ) ->
     guid = Ember.guidFor typ
-    #@[guid] = Ember.Object.create({_path: "App.Stores.#{guid}"}) unless @[guid]
-    @[guid] = App.Store.create({type: typ}) unless @[guid]
+    @[guid] = TD.Store.create({type: typ}) unless @[guid]
     @[guid]
 
-App.Model = Em.Object.extend
+TD.Model = Em.Object.extend
   _partial: null
   _status: null
   _path: null
@@ -40,46 +39,41 @@ App.Model = Em.Object.extend
     @references = Em.A []
     @_status or= 'created'
     @_super()
-    #@_path = "App.Stores.#{App.Stores.getStore(@constructor).path}.#{Ember.guidFor @}"
   _path: (->
-    "#{App.Stores.getStore(@constructor).path}.#{Ember.guidFor @}"
+    "#{TD.Stores.getStore(@constructor).path}.#{Ember.guidFor @}"
     ).property()
 
-App.ModelArray = Em.ArrayProxy.extend
+TD.ModelArray = Em.ArrayProxy.extend
   store: null
   destroy: ->
     @_super
 
   _observeStore: (str, modeluid, val) ->
-    console.log 'notifed about change', arguments
-    console.log @content
+    #console.log 'notifed about change', arguments
+    #console.log @content
     #console.log item,i for item,i in @content when Ember.guidFor(item) == modeluid
     for item,i in @content when Ember.guidFor(item) == modeluid
       do (item, i) =>
-        console.log @,i
         @removeAt i
-        #remove Listener
+        #console.log @,i
 
   arrayDidChange: (array, index, removed, added) ->
     @_super(array, index, removed, added)
-    #console.log("did: ", (a.get('id') for a in array), index, removed, added)
-    console.log "added", (a.get('id') for a in array[index...index+added])
+    #console.log "added", (a.get('id') for a in array[index...index+added])
     Ember.addObserver(@store, Ember.guidFor(item), @, @_observeStore) for item in array[index...index+added]
-    #Ember.addObserver(@store, Ember.guidFor(item), @, -> alert('stupoid')) for item in array[index...index+added]
 
   arrayWillChange: (array, index, removed, added) ->
     @_super(array, index, removed, added)
-    #console.log("will: ", (a.get('id') for a in array), index, removed, added)
-    console.log "remove", (a.get('id') for a in array[index...index+removed])
+    #console.log "remove", (a.get('id') for a in array[index...index+removed])
     Ember.removeObserver(@store, Ember.guidFor(item), @, @_observeStore) for item in array[index...index+added]
 
 
-App.Controller = Em.Object.extend
+TD.Controller = Em.Object.extend
   store: null
   type: null
   init: ->
-    @store = App.Stores.getStore @type
-    #@store = new App.Store()
+    @store = TD.Stores.getStore @type
+    #@store = new TD.Store()
     @deserializer = {}
     @_super()
 
@@ -92,8 +86,9 @@ App.Controller = Em.Object.extend
     model
 
   find: (id) ->
-    if Em.isArray id 
-      @findOne idx for idx in id
+    if Em.isArray id
+      arr = (@findOne idx for idx in id)
+      TD.ModelArray.create(store: @store, content: arr)
     else @findOne id
 
   findOne: (id) ->

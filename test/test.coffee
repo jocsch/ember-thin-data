@@ -1,21 +1,23 @@
 #setup test data
-App.Person = App.Model.extend
+window.App = Em.Application.create()
+
+App.Person = TD.Model.extend
   firstName: null
   lastName: null
 
-App.Group = App.Model.extend
+App.Group = TD.Model.extend
   name: null
   members: null
 
 
-App.PController = App.Controller.create
+App.PController = TD.Controller.create
   type: App.Person
 
-App.GController = App.Controller.create
+App.GController = TD.Controller.create
   type: App.Group
   init: ->
     @_super()
-    @deserializer['members'] = (ids) -> 
+    @deserializer['members'] = (ids) ->
       App.PController.find ids
 
 App.PController.load [
@@ -58,9 +60,9 @@ test "Test loaded groups", ->
   equal deepGroup.constructor, App.Group, "Check group type"
   equal deepGroup.get('id'), 1, "Test id prop"
   equal deepGroup.get('name'), 'Group1', "Test id prop"
-  equal deepGroup.get('members').length, 2, "Member array length"
+  equal deepGroup.get('members').get('length'), 2, "Member array length"
   equal deepGroup.get('_status'), 'loaded', "Test status prop"
-  member = deepGroup.get('members')[0]
+  member = deepGroup.get('members').get('firstObject')
   equal member.constructor, App.Person, "Check member type"
   equal member.get('_status'), "loaded", "Check member status"
 
@@ -128,10 +130,10 @@ test "Same object is returned", ->
   Em.run.sync()
 
 test "Object has correct path", ->
-  pStore = App.Stores.getStore(App.Person)
-  equal pStore.get('path'), "App.Stores.#{Em.guidFor App.Person}"
-  gStore = App.Stores.getStore(App.Group)
-  equal gStore.get('path'), "App.Stores.#{Em.guidFor App.Group}"
+  pStore = TD.Stores.getStore(App.Person)
+  equal pStore.get('path'), "TD.Stores.#{Em.guidFor App.Person}"
+  gStore = TD.Stores.getStore(App.Group)
+  equal gStore.get('path'), "TD.Stores.#{Em.guidFor App.Group}"
   ok pStore.get('path') != gStore.get('path')
   p1 = App.PController.find 1
   equal p1.get('_path'), "#{pStore.get('path')}.#{Ember.guidFor p1}"
@@ -144,20 +146,14 @@ test "Proper array handling", ->
     id: 92
     firstName: 'dil'
     lastName: 'bert'
-  ps = App.ModelArray.create(store: App.PController.store, content: App.PController.find [1,2,92])
-  console.log "after created"
-  equal 3, ps.get('length'), "All 3 are returned"
-  #p2 = App.PController.find 2 
-  #App.PController.remove p2
-  #
+  ps = App.PController.find [1,2,92]
+
+  equal ps.get('length'), 3, "All 3 are returned"
+
   ps.removeAt(1)
-  Ember.run.sync()
-  console.log "after remove", ps.get('content'), ps.get 'length'
-  equal 2, ps.get('length')
-  ps.removeAt(1)
+  equal ps.get('length'), 2
   ps.insertAt(0, App.PController.find 2)
-  ps.removeAt(1)
-  ps.removeAt(0)
+  equal ps.get('length'), 3
 
   con = Em.Object.create
     acontent: ps
@@ -165,29 +161,14 @@ test "Proper array handling", ->
       ps.get('length')
     ).property('acontent')
   Em.run.sync()
-  equal 3, con.get('alength'), "Array is properly linked"
-  #con.get('acontent').removeAt(0)
-  ps.removeAt(0)
+  equal con.get('alength'), 3, "Array is properly linked"
+  ps.removeAt(1)
   Em.run.sync()
-  equal 2, con.get('alength'), "Only two elements are left"
-
-  #tsto = Ember.Object.create
-  #  callme: (obj, key) -> console.log("calleed", obj[key])
-
-  #  #freaka = Ember.Object.create
-  #  #nin: "do"
+  equal con.get('alength'), 2,  "Only two elements are left"
 
   p92 = App.PController.find 92
-  #Ember.addObserver p92.get("_path"), tsto, 'callme'
-  #Ember.addObserver App.PController.store, Ember.guidFor(p92), tsto, 'callme'
-  #Ember.addObserver freaka, 'nin', tsto, 'callme'
-  #Em.run.sync()
-  #freaka.set('nin','fo')
-  #freaka.set('nin', null)
-  #delete freaka['nin']
-  #App.PController.store.set Ember.guidFor(p92), "rmpf"
   App.PController.remove p92
   Em.run.sync()
-  equal 1, con.get('alength'), "Only one element is left"
+  equal con.get('alength'), 1,  "Directly from store removed element also dissappears in array and bindings of the array"
 
 
