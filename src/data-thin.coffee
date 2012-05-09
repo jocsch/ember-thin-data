@@ -71,14 +71,16 @@ TD.ModelArray = Em.ArrayProxy.extend
 TD.Controller = Em.Object.extend
   store: null
   type: null
+  urls: null
   init: ->
     @store = TD.Stores.getStore @type
     #@store = new TD.Store()
     @deserializer = {}
+    @urls or= {}
     @_super()
 
   deserialize: (model, key, prop) ->
-    model.set key, 
+    model.set key,
       if @deserializer[key]
         @deserializer[key] prop
       else
@@ -92,19 +94,41 @@ TD.Controller = Em.Object.extend
     else @findOne id
 
   findOne: (id) ->
-    @store.getById(id) ? @type.create(_status: 'loading')
+    obj = @store.getById(id) 
+    if obj
+      obj
+    else
+      obj = @type.create(_status: 'loading', id: id)
+      @_get obj
+      obj
 
   load: (obj) ->
-    if Em.isArray obj 
+    if Em.isArray obj
       @loadOne objx for objx in obj
     else @loadOne obj
 
-  loadOne: (obj) ->
-    model = @type.create(_status: 'loaded')
-    for key, prop of obj 
+  loadOne: (obj, model = @type.create()) ->
+    #model = @type.create(_status: 'loaded')
+    model.set('_status', 'loaded')
+    for key, prop of obj
       @deserialize model, key, prop
     @store.add model
     model
 
   remove: (obj) ->
     @store.remove obj
+
+  _get: (obj, partial = 'basic') ->
+    url = @urls[partial] 
+    if not url
+      console.error("No url defined for <#{@type}> and partial <#{partial}>")
+    url = url.replace /%id/, obj.id
+    $.get(url)
+     .success( (resp) =>
+                console.log resp, "success", arguments, obj
+                @loadOne resp, obj
+     )
+     .error( ->
+       obj.set '_status','error'
+       console.log "failure", arguments
+     )

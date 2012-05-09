@@ -12,9 +12,13 @@ App.Group = TD.Model.extend
 
 App.PController = TD.Controller.create
   type: App.Person
+  #urls: {basic: 'http://localhost:9000/user/%id'}
+  # urls: {basic: 'http://localhost/ember-thin-data/test/data/user/%id'}
+  urls: {basic: '/ember-thin-data/test/data/user/%id'}
 
 App.GController = TD.Controller.create
   type: App.Group
+  urls: {basic: '/ember-thin-data/test/data/group/%id'}
   init: ->
     @_super()
     @deserializer['members'] = (ids) ->
@@ -43,6 +47,14 @@ App.GController.load [
     name: "Group2"
     members: [2,3]
 ]
+
+
+respondServerSuccess = (server, urlfrag, responseObject) ->
+  server.respondWith "/ember-thin-data/test/data/#{urlfrag}/#{responseObject.id}", [200, { "Content-Type": "application/json" }, 
+      JSON.stringify(responseObject)]
+
+respondServerError = (server, urlfrag, id, code) ->
+  server.respondWith "/ember-thin-data/test/data/#{urlfrag}/#{id}", [code, { "Content-Type": "application/json" }, ""]
 
 test "Test loaded people", ->
   store = App.PController.store
@@ -94,10 +106,12 @@ test "Find", ->
   equal p2.get("id"), 2
   equal p2.get("firstName"), "foo"
   equal p2.constructor, App.Person
-
-  p99 = App.PController.find 99 
-  equal p99.get("id"), undefined, "Test object not in cache"
+  server = @sandbox.useFakeServer()
+  respondServerSuccess server, 'user', {id: 99, firstName: "new"}
+  p99 = App.PController.find 99
+  #equal p99.get("id"), undefined, "Test object not in cache"
   equal p99.get("_status"), "loading", "Test status loading"
+  server.respond()
 
 test "Same object is returned", ->
   p2 = App.PController.find 2
@@ -171,4 +185,41 @@ test "Proper array handling", ->
   Em.run.sync()
   equal con.get('alength'), 1,  "Directly from store removed element also dissappears in array and bindings of the array"
 
+  #asyncTest "Remote content retrieval", ->
+test "Remote content retrieval", ->
+  #start()
+  server = @sandbox.useFakeServer()
+  respondServerSuccess server, 'user', {id: 55, firstName: 'new', lastName: 'newaswell'}
+  p55 = App.PController.find 55
+  equal p55.get('_status'), 'loading', 'Test status loading'
+  server.respond()
+  equal p55.get('_status'), 'loaded', 'Test status loaded'
+  equal p55.get('id'), 55
+  equal p55.get("firstName"), 'new'
+  equal p55.get("lastName"), 'newaswell'
 
+  #make sure it is not loaded a second time when the same level is requested
+  @spy App.PController, '_get'
+  p55v2 = App.PController.find 55
+  equal App.PController._get.called, false
+  equal p55, p55v2
+
+test "Remote content retrieval failed", ->
+  server = @sandbox.useFakeServer()
+  respondServerError server, 'user', 101, 404 
+  p101 = App.PController.find 101
+  server.respond()
+  equal p101.get('_status'), 'error', 'Test status error'
+
+  #make sure it is loaded again when requested
+  @spy App.PController, '_get'
+  p101v2 = App.PController.find 101
+  equal App.PController._get.called, true
+
+test "Inline remote content retrieval", ->
+  server = @sandbox.useFakeServer()
+  respondServerSuccess server, 'group', {id: 33, name: 'newgroup', members: [77, 78]}
+  respondServerSuccess server, 'user', {id: 77, firstName: 'mik', lastName: "muck"}
+  respondServerSuccess server, 'user', {id: 78, firstName: 'ika', lastName: "rus"}
+  g33 = App.GController.find 33
+  server.respond()

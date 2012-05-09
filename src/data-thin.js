@@ -1,5 +1,6 @@
-var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
 window.TD = Em.Namespace.create();
+
 TD.Store = Em.Object.extend({
   type: null,
   map: null,
@@ -12,9 +13,7 @@ TD.Store = Em.Object.extend({
     var guid;
     guid = Ember.guidFor(obj);
     this.set(guid, obj);
-    if (obj.id) {
-      this.linkId(obj);
-    }
+    if (obj.id) this.linkId(obj);
     return guid;
   },
   linkId: function(obj) {
@@ -29,12 +28,11 @@ TD.Store = Em.Object.extend({
     guid = Ember.guidFor(obj);
     this.set(guid, null);
     delete this[guid];
-    if (obj.id) {
-      delete this.map[obj.id];
-    }
+    if (obj.id) delete this.map[obj.id];
     return obj;
   }
 });
+
 TD.Stores = {
   getStore: function(typ) {
     var guid;
@@ -47,6 +45,7 @@ TD.Stores = {
     return this[guid];
   }
 };
+
 TD.Model = Em.Object.extend({
   _partial: null,
   _status: null,
@@ -60,21 +59,23 @@ TD.Model = Em.Object.extend({
     return "" + (TD.Stores.getStore(this.constructor).path) + "." + (Ember.guidFor(this));
   }).property()
 });
+
 TD.ModelArray = Em.ArrayProxy.extend({
   store: null,
   destroy: function() {
     return this._super;
   },
   _observeStore: function(str, modeluid, val) {
-    var i, item, _len, _ref, _results;
+    var i, item, _len, _ref, _results,
+      _this = this;
     _ref = this.content;
     _results = [];
     for (i = 0, _len = _ref.length; i < _len; i++) {
       item = _ref[i];
       if (Ember.guidFor(item) === modeluid) {
-        _results.push(__bind(function(item, i) {
-          return this.removeAt(i);
-        }, this)(item, i));
+        _results.push((function(item, i) {
+          return _this.removeAt(i);
+        })(item, i));
       }
     }
     return _results;
@@ -82,7 +83,7 @@ TD.ModelArray = Em.ArrayProxy.extend({
   arrayDidChange: function(array, index, removed, added) {
     var item, _i, _len, _ref, _results;
     this._super(array, index, removed, added);
-    _ref = array.slice(index, index + added);
+    _ref = array.slice(index, (index + added));
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
@@ -93,7 +94,7 @@ TD.ModelArray = Em.ArrayProxy.extend({
   arrayWillChange: function(array, index, removed, added) {
     var item, _i, _len, _ref, _results;
     this._super(array, index, removed, added);
-    _ref = array.slice(index, index + added);
+    _ref = array.slice(index, (index + added));
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
@@ -102,12 +103,15 @@ TD.ModelArray = Em.ArrayProxy.extend({
     return _results;
   }
 });
+
 TD.Controller = Em.Object.extend({
   store: null,
   type: null,
+  urls: null,
   init: function() {
     this.store = TD.Stores.getStore(this.type);
     this.deserializer = {};
+    this.urls || (this.urls = {});
     return this._super();
   },
   deserialize: function(model, key, prop) {
@@ -135,10 +139,18 @@ TD.Controller = Em.Object.extend({
     }
   },
   findOne: function(id) {
-    var _ref;
-    return (_ref = this.store.getById(id)) != null ? _ref : this.type.create({
-      _status: 'loading'
-    });
+    var obj;
+    obj = this.store.getById(id);
+    if (obj) {
+      return obj;
+    } else {
+      obj = this.type.create({
+        _status: 'loading',
+        id: id
+      });
+      this._get(obj);
+      return obj;
+    }
   },
   load: function(obj) {
     var objx, _i, _len, _results;
@@ -153,11 +165,10 @@ TD.Controller = Em.Object.extend({
       return this.loadOne(obj);
     }
   },
-  loadOne: function(obj) {
-    var key, model, prop;
-    model = this.type.create({
-      _status: 'loaded'
-    });
+  loadOne: function(obj, model) {
+    var key, prop;
+    if (model == null) model = this.type.create();
+    model.set('_status', 'loaded');
     for (key in obj) {
       prop = obj[key];
       this.deserialize(model, key, prop);
@@ -167,5 +178,22 @@ TD.Controller = Em.Object.extend({
   },
   remove: function(obj) {
     return this.store.remove(obj);
+  },
+  _get: function(obj, partial) {
+    var url,
+      _this = this;
+    if (partial == null) partial = 'basic';
+    url = this.urls[partial];
+    if (!url) {
+      console.error("No url defined for <" + this.type + "> and partial <" + partial + ">");
+    }
+    url = url.replace(/%id/, obj.id);
+    return $.get(url).success(function(resp) {
+      console.log(resp, "success", arguments, obj);
+      return _this.loadOne(resp, obj);
+    }).error(function() {
+      obj.set('_status', 'error');
+      return console.log("failure", arguments);
+    });
   }
 });

@@ -1,17 +1,29 @@
+var respondServerError, respondServerSuccess;
+
 window.App = Em.Application.create();
+
 App.Person = TD.Model.extend({
   firstName: null,
   lastName: null
 });
+
 App.Group = TD.Model.extend({
   name: null,
   members: null
 });
+
 App.PController = TD.Controller.create({
-  type: App.Person
+  type: App.Person,
+  urls: {
+    basic: '/ember-thin-data/test/data/user/%id'
+  }
 });
+
 App.GController = TD.Controller.create({
   type: App.Group,
+  urls: {
+    basic: '/ember-thin-data/test/data/group/%id'
+  },
   init: function() {
     this._super();
     return this.deserializer['members'] = function(ids) {
@@ -19,6 +31,7 @@ App.GController = TD.Controller.create({
     };
   }
 });
+
 App.PController.load([
   {
     id: 1,
@@ -34,6 +47,7 @@ App.PController.load([
     lastName: "no"
   }
 ]);
+
 App.GController.load([
   {
     id: 1,
@@ -45,6 +59,23 @@ App.GController.load([
     members: [2, 3]
   }
 ]);
+
+respondServerSuccess = function(server, urlfrag, responseObject) {
+  return server.respondWith("/ember-thin-data/test/data/" + urlfrag + "/" + responseObject.id, [
+    200, {
+      "Content-Type": "application/json"
+    }, JSON.stringify(responseObject)
+  ]);
+};
+
+respondServerError = function(server, urlfrag, id, code) {
+  return server.respondWith("/ember-thin-data/test/data/" + urlfrag + "/" + id, [
+    code, {
+      "Content-Type": "application/json"
+    }, ""
+  ]);
+};
+
 test("Test loaded people", function() {
   var store;
   store = App.PController.store;
@@ -55,6 +86,7 @@ test("Test loaded people", function() {
   equal(store.getById(3).get('_status'), "loaded", "Test status prop");
   return equal(store.getById(1).constructor, App.Person, "Check correct type loaded");
 });
+
 test("Test loaded groups", function() {
   var deepGroup, member, store;
   store = App.GController.store;
@@ -69,6 +101,7 @@ test("Test loaded groups", function() {
   equal(member.constructor, App.Person, "Check member type");
   return equal(member.get('_status'), "loaded", "Check member status");
 });
+
 test("Late id linking", function() {
   var guid, jP, store, tmpP;
   store = App.PController.store;
@@ -87,8 +120,9 @@ test("Late id linking", function() {
   ok(!store[guid]);
   return ok(!store.map[91]);
 });
+
 test("Find", function() {
-  var p1, p2, p99;
+  var p1, p2, p99, server;
   p1 = App.PController.find(1);
   equal(p1.get("id"), 1);
   equal(p1.get("firstName"), "abc");
@@ -98,10 +132,16 @@ test("Find", function() {
   equal(p2.get("id"), 2);
   equal(p2.get("firstName"), "foo");
   equal(p2.constructor, App.Person);
+  server = this.sandbox.useFakeServer();
+  respondServerSuccess(server, 'user', {
+    id: 99,
+    firstName: "new"
+  });
   p99 = App.PController.find(99);
-  equal(p99.get("id"), void 0, "Test object not in cache");
-  return equal(p99.get("_status"), "loading", "Test status loading");
+  equal(p99.get("_status"), "loading", "Test status loading");
+  return server.respond();
 });
+
 test("Same object is returned", function() {
   var con, g1, g2, m2, m2x, p2, p2x;
   p2 = App.PController.find(2);
@@ -124,6 +164,7 @@ test("Same object is returned", function() {
   p2.set('firstName', 'foo');
   return Em.run.sync();
 });
+
 test("Object has correct path", function() {
   var gStore, p1, p2, pStore;
   pStore = TD.Stores.getStore(App.Person);
@@ -137,6 +178,7 @@ test("Object has correct path", function() {
   equal(p2.get('_path'), "" + (pStore.get('path')) + "." + (Ember.guidFor(p2)));
   return ok(p1.get('_path') !== p2.get('_path'));
 });
+
 test("Proper array handling", function() {
   var con, p92, ps;
   App.PController.load({
@@ -165,4 +207,59 @@ test("Proper array handling", function() {
   App.PController.remove(p92);
   Em.run.sync();
   return equal(con.get('alength'), 1, "Directly from store removed element also dissappears in array and bindings of the array");
+});
+
+test("Remote content retrieval", function() {
+  var p55, p55v2, server;
+  server = this.sandbox.useFakeServer();
+  respondServerSuccess(server, 'user', {
+    id: 55,
+    firstName: 'new',
+    lastName: 'newaswell'
+  });
+  p55 = App.PController.find(55);
+  equal(p55.get('_status'), 'loading', 'Test status loading');
+  server.respond();
+  equal(p55.get('_status'), 'loaded', 'Test status loaded');
+  equal(p55.get('id'), 55);
+  equal(p55.get("firstName"), 'new');
+  equal(p55.get("lastName"), 'newaswell');
+  this.spy(App.PController, '_get');
+  p55v2 = App.PController.find(55);
+  equal(App.PController._get.called, false);
+  return equal(p55, p55v2);
+});
+
+test("Remote content retrieval failed", function() {
+  var p101, p101v2, server;
+  server = this.sandbox.useFakeServer();
+  respondServerError(server, 'user', 101, 404);
+  p101 = App.PController.find(101);
+  server.respond();
+  equal(p101.get('_status'), 'error', 'Test status error');
+  this.spy(App.PController, '_get');
+  p101v2 = App.PController.find(101);
+  return equal(App.PController._get.called, true);
+});
+
+test("Inline remote content retrieval", function() {
+  var g33, server;
+  server = this.sandbox.useFakeServer();
+  respondServerSuccess(server, 'group', {
+    id: 33,
+    name: 'newgroup',
+    members: [77, 78]
+  });
+  respondServerSuccess(server, 'user', {
+    id: 77,
+    firstName: 'mik',
+    lastName: "muck"
+  });
+  respondServerSuccess(server, 'user', {
+    id: 78,
+    firstName: 'ika',
+    lastName: "rus"
+  });
+  g33 = App.GController.find(33);
+  return server.respond();
 });
