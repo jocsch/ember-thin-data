@@ -51,7 +51,6 @@ TD.Model = Em.Object.extend({
   _status: null,
   _path: null,
   init: function() {
-    this.references = Em.A([]);
     this._status || (this._status = 'created');
     return this._super();
   },
@@ -141,13 +140,14 @@ TD.Controller = Em.Object.extend({
   findOne: function(id) {
     var obj;
     obj = this.store.getById(id);
-    if (obj) {
+    if (obj && obj.get('_status') !== 'error') {
       return obj;
     } else {
       obj = this.type.create({
         _status: 'loading',
         id: id
       });
+      this.store.add(obj);
       this._get(obj);
       return obj;
     }

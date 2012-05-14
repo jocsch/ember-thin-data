@@ -1,4 +1,4 @@
-var respondServerError, respondServerSuccess;
+var checkP, respondServerError, respondServerSuccess;
 
 window.App = Em.Application.create();
 
@@ -74,6 +74,12 @@ respondServerError = function(server, urlfrag, id, code) {
       "Content-Type": "application/json"
     }, ""
   ]);
+};
+
+checkP = function(obj, id, fName, lName) {
+  equal(obj.get('id'), id);
+  equal(obj.get('firstName'), fName);
+  return equal(obj.get('lastName'), lName);
 };
 
 test("Test loaded people", function() {
@@ -243,7 +249,7 @@ test("Remote content retrieval failed", function() {
 });
 
 test("Inline remote content retrieval", function() {
-  var g33, server;
+  var p77, p78, server;
   server = this.sandbox.useFakeServer();
   respondServerSuccess(server, 'group', {
     id: 33,
@@ -260,6 +266,61 @@ test("Inline remote content retrieval", function() {
     firstName: 'ika',
     lastName: "rus"
   });
-  g33 = App.GController.find(33);
-  return server.respond();
+  window.g33 = App.GController.find(33);
+  server.respond();
+  equal(g33.get('name'), 'newgroup');
+  equal(g33.get('members').get('length'), 2);
+  p77 = g33.get('members').objectAt(0);
+  checkP(p77, 77, 'mik', 'muck');
+  p78 = g33.get('members').objectAt(1);
+  return checkP(p78, 78, 'ika', 'rus');
+});
+
+test("Inline content loading", function() {
+  var altGController, g39, p87, p88;
+  altGController = TD.Controller.create({
+    type: App.Group,
+    urls: {
+      basic: '/ember-thin-data/test/data/group/%id'
+    },
+    init: function() {
+      this._super();
+      return this.deserializer['members'] = function(ids) {
+        return App.PController.load(ids);
+      };
+    }
+  });
+  this.spy(App.PController, '_get');
+  this.spy(App.GController, '_get');
+  this.spy(altGController, '_get');
+  altGController.load([
+    {
+      id: 39,
+      name: "Group39",
+      members: [
+        {
+          id: 87,
+          firstName: "nr87",
+          lastName: "eighty"
+        }, {
+          id: 88,
+          firstName: "nr88",
+          lastName: "double8"
+        }
+      ]
+    }
+  ]);
+  g39 = App.GController.find(39);
+  equal(g39.get('id'), 39);
+  equal(g39.get('name'), 'Group39');
+  equal(g39.get('members').get('length'), 2);
+  p87 = App.PController.find(87);
+  checkP(p87, 87, 'nr87', 'eighty');
+  p88 = App.PController.find(88);
+  checkP(p88, 88, 'nr88', 'double8');
+  equal(g39.get('members').objectAt(0), p87);
+  equal(g39.get('members').objectAt(1), p88);
+  equal(App.PController._get.called, false);
+  equal(App.GController._get.called, false);
+  return equal(altGController._get.called, false);
 });

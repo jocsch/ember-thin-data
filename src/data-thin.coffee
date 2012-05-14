@@ -36,7 +36,7 @@ TD.Model = Em.Object.extend
   _status: null
   _path: null
   init: ->
-    @references = Em.A []
+    #@references = Em.A []
     @_status or= 'created'
     @_super()
   _path: (->
@@ -95,10 +95,11 @@ TD.Controller = Em.Object.extend
 
   findOne: (id) ->
     obj = @store.getById(id) 
-    if obj
+    if obj and obj.get('_status') isnt 'error'
       obj
     else
       obj = @type.create(_status: 'loading', id: id)
+      @store.add obj
       @_get obj
       obj
 
@@ -108,7 +109,6 @@ TD.Controller = Em.Object.extend
     else @loadOne obj
 
   loadOne: (obj, model = @type.create()) ->
-    #model = @type.create(_status: 'loaded')
     model.set('_status', 'loaded')
     for key, prop of obj
       @deserialize model, key, prop

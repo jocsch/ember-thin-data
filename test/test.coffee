@@ -12,8 +12,6 @@ App.Group = TD.Model.extend
 
 App.PController = TD.Controller.create
   type: App.Person
-  #urls: {basic: 'http://localhost:9000/user/%id'}
-  # urls: {basic: 'http://localhost/ember-thin-data/test/data/user/%id'}
   urls: {basic: '/ember-thin-data/test/data/user/%id'}
 
 App.GController = TD.Controller.create
@@ -21,8 +19,7 @@ App.GController = TD.Controller.create
   urls: {basic: '/ember-thin-data/test/data/group/%id'}
   init: ->
     @_super()
-    @deserializer['members'] = (ids) ->
-      App.PController.find ids
+    @deserializer['members'] = (ids) -> App.PController.find ids
 
 App.PController.load [
     id: 1
@@ -55,6 +52,11 @@ respondServerSuccess = (server, urlfrag, responseObject) ->
 
 respondServerError = (server, urlfrag, id, code) ->
   server.respondWith "/ember-thin-data/test/data/#{urlfrag}/#{id}", [code, { "Content-Type": "application/json" }, ""]
+
+checkP = (obj, id, fName, lName) ->
+  equal obj.get('id'), id
+  equal obj.get('firstName'), fName
+  equal obj.get('lastName'), lName
 
 test "Test loaded people", ->
   store = App.PController.store
@@ -221,5 +223,58 @@ test "Inline remote content retrieval", ->
   respondServerSuccess server, 'group', {id: 33, name: 'newgroup', members: [77, 78]}
   respondServerSuccess server, 'user', {id: 77, firstName: 'mik', lastName: "muck"}
   respondServerSuccess server, 'user', {id: 78, firstName: 'ika', lastName: "rus"}
-  g33 = App.GController.find 33
+  window.g33 = App.GController.find 33
   server.respond()
+  equal g33.get('name'), 'newgroup'
+  equal g33.get('members').get('length'), 2
+  p77 = g33.get('members').objectAt(0)
+  checkP p77, 77, 'mik', 'muck'
+
+  p78 = g33.get('members').objectAt(1)
+  checkP p78, 78, 'ika', 'rus'
+
+
+test "Inline content loading", ->
+  altGController = TD.Controller.create
+    type: App.Group
+    urls: {basic: '/ember-thin-data/test/data/group/%id'}
+    init: ->
+      @_super()
+      @deserializer['members'] = (ids) -> App.PController.load ids
+
+  @spy App.PController, '_get'
+  @spy App.GController, '_get'
+  @spy altGController, '_get'
+
+  altGController.load [
+    id: 39
+    name: "Group39"
+    members: [
+      id: 87 
+      firstName: "nr87"
+      lastName: "eighty"
+    ,
+      id: 88 
+      firstName: "nr88"
+      lastName: "double8"
+    ]
+  ]
+ 
+  g39 = App.GController.find 39
+  equal g39.get('id'), 39
+  equal g39.get('name'), 'Group39'
+  equal g39.get('members').get('length'), 2
+
+  p87 = App.PController.find 87
+  checkP p87, 87, 'nr87', 'eighty'
+
+  p88 = App.PController.find 88
+  checkP p88, 88, 'nr88', 'double8'
+
+  equal g39.get('members').objectAt(0), p87
+  equal g39.get('members').objectAt(1), p88
+
+  #make sure no entry is loaded remotely
+  equal App.PController._get.called, false
+  equal App.GController._get.called, false
+  equal altGController._get.called, false
