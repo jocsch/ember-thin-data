@@ -117,15 +117,16 @@ TD.Controller = Em.Object.extend({
     model.set(key, this.deserializer[key] ? this.deserializer[key](prop) : prop);
     return model;
   },
-  find: function(id) {
+  find: function(id, partial) {
     var arr, idx;
+    if (partial == null) partial = 'basic';
     if (Em.isArray(id)) {
       arr = (function() {
         var _i, _len, _results;
         _results = [];
         for (_i = 0, _len = id.length; _i < _len; _i++) {
           idx = id[_i];
-          _results.push(this.findOne(idx));
+          _results.push(this.findOne(idx, partial));
         }
         return _results;
       }).call(this);
@@ -134,21 +135,25 @@ TD.Controller = Em.Object.extend({
         content: arr
       });
     } else {
-      return this.findOne(id);
+      return this.findOne(id, partial);
     }
   },
-  findOne: function(id) {
+  findOne: function(id, partial) {
     var obj;
+    if (partial == null) partial = 'basic';
     obj = this.store.getById(id);
-    if (obj && obj.get('_status') !== 'error') {
+    if (obj && obj.get('_status') !== 'error' && obj.get("_partial" + partial)) {
       return obj;
     } else {
-      obj = this.type.create({
-        _status: 'loading',
-        id: id
-      });
-      this.store.add(obj);
-      this._get(obj);
+      if (!obj) {
+        obj = this.type.create({
+          _status: 'loading',
+          id: id
+        });
+        this.store.add(obj);
+      }
+      obj.set('_status', 'loading');
+      this._get(obj, partial);
       return obj;
     }
   },
@@ -182,14 +187,14 @@ TD.Controller = Em.Object.extend({
   _get: function(obj, partial) {
     var url,
       _this = this;
-    if (partial == null) partial = 'basic';
     url = this.urls[partial];
     if (!url) {
       console.error("No url defined for <" + this.type + "> and partial <" + partial + ">");
+      obj.set('_status', 'error');
+      return;
     }
     url = url.replace(/%id/, obj.id);
     return $.get(url).success(function(resp) {
-      console.log(resp, "success", arguments, obj);
       return _this.loadOne(resp, obj);
     }).error(function() {
       obj.set('_status', 'error');

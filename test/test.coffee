@@ -3,20 +3,33 @@ window.App = Em.Application.create()
 
 App.Person = TD.Model.extend
   firstName: null
-  lastName: null
+  lastName: null,
+  _partialbasic: (->
+    @get('firstName')?
+  ).property 'lastName'
 
 App.Group = TD.Model.extend
   name: null
   members: null
+  admins: null
+  _partialbasic: (->
+    @get('name')?
+  ).property 'name'
+  _partialcomplete: (->
+    @get ('admins')?
+  ).property 'name', 'admins'
 
 
 App.PController = TD.Controller.create
   type: App.Person
-  urls: {basic: '/ember-thin-data/test/data/user/%id'}
+  urls:
+    basic: '/ember-thin-data/test/data/user/%id'
 
 App.GController = TD.Controller.create
   type: App.Group
-  urls: {basic: '/ember-thin-data/test/data/group/%id'}
+  urls: 
+    basic: '/ember-thin-data/test/data/group/%id'
+    complete: '/ember-thin-data/test/data/group-complete/%id'
   init: ->
     @_super()
     @deserializer['members'] = (ids) -> App.PController.find ids
@@ -278,3 +291,23 @@ test "Inline content loading", ->
   equal App.PController._get.called, false
   equal App.GController._get.called, false
   equal altGController._get.called, false
+
+test "Partial loading", ->
+  server = @sandbox.useFakeServer()
+  respondServerSuccess server, 'group-complete', {id: 1, admins: ['admin1']}
+  @spy App.GController, '_get'
+  g1 = App.GController.find 1, 'basic'
+  equal App.GController._get.called, false, 'No call should happen as basic is already loaded'
+  equal g1.get('admins'), null
+
+  g1v1 = App.GController.find 1, 'complete'
+  equal g1v1.get('_status'), 'loading'
+  server.respond()
+  equal g1v1.get('_status'), 'loaded'
+  equal App.GController._get.called, true, 'Additional props should have been loaded'
+  equal g1v1.get('admins').length, 1
+  equal Em.guidFor(g1), Em.guidFor(g1v1), "Should be the same object"
+
+test "Partial loading without partial information", ->
+  g1 = App.GController.find 1, 'foo'
+  equal g1.get('_status'), 'error'

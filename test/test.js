@@ -4,12 +4,22 @@ window.App = Em.Application.create();
 
 App.Person = TD.Model.extend({
   firstName: null,
-  lastName: null
+  lastName: null,
+  _partialbasic: (function() {
+    return this.get('firstName') != null;
+  }).property('lastName')
 });
 
 App.Group = TD.Model.extend({
   name: null,
-  members: null
+  members: null,
+  admins: null,
+  _partialbasic: (function() {
+    return this.get('name') != null;
+  }).property('name'),
+  _partialcomplete: (function() {
+    return this.get('admins' != null);
+  }).property('name', 'admins')
 });
 
 App.PController = TD.Controller.create({
@@ -22,7 +32,8 @@ App.PController = TD.Controller.create({
 App.GController = TD.Controller.create({
   type: App.Group,
   urls: {
-    basic: '/ember-thin-data/test/data/group/%id'
+    basic: '/ember-thin-data/test/data/group/%id',
+    complete: '/ember-thin-data/test/data/group-complete/%id'
   },
   init: function() {
     this._super();
@@ -323,4 +334,30 @@ test("Inline content loading", function() {
   equal(App.PController._get.called, false);
   equal(App.GController._get.called, false);
   return equal(altGController._get.called, false);
+});
+
+test("Partial loading", function() {
+  var g1, g1v1, server;
+  server = this.sandbox.useFakeServer();
+  respondServerSuccess(server, 'group-complete', {
+    id: 1,
+    admins: ['admin1']
+  });
+  this.spy(App.GController, '_get');
+  g1 = App.GController.find(1, 'basic');
+  equal(App.GController._get.called, false, 'No call should happen as basic is already loaded');
+  equal(g1.get('admins'), null);
+  g1v1 = App.GController.find(1, 'complete');
+  equal(g1v1.get('_status'), 'loading');
+  server.respond();
+  equal(g1v1.get('_status'), 'loaded');
+  equal(App.GController._get.called, true, 'Additional props should have been loaded');
+  equal(g1v1.get('admins').length, 1);
+  return equal(Em.guidFor(g1), Em.guidFor(g1v1), "Should be the same object");
+});
+
+test("Partial loading without partial information", function() {
+  var g1;
+  g1 = App.GController.find(1, 'foo');
+  return equal(g1.get('_status'), 'error');
 });

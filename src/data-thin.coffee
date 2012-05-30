@@ -87,20 +87,22 @@ TD.Controller = Em.Object.extend
         prop
     model
 
-  find: (id) ->
+  find: (id, partial = 'basic') ->
     if Em.isArray id
-      arr = (@findOne idx for idx in id)
+      arr = (@findOne(idx, partial) for idx in id)
       TD.ModelArray.create(store: @store, content: arr)
-    else @findOne id
+    else @findOne id, partial
 
-  findOne: (id) ->
+  findOne: (id, partial = 'basic') ->
     obj = @store.getById(id) 
-    if obj and obj.get('_status') isnt 'error'
+    if obj and obj.get('_status') isnt 'error' and obj.get("_partial#{partial}")
       obj
     else
-      obj = @type.create(_status: 'loading', id: id)
-      @store.add obj
-      @_get obj
+      if not obj
+        obj = @type.create(_status: 'loading', id: id)
+        @store.add obj
+      obj.set('_status', 'loading')
+      @_get obj, partial
       obj
 
   load: (obj) ->
@@ -118,15 +120,17 @@ TD.Controller = Em.Object.extend
   remove: (obj) ->
     @store.remove obj
 
-  _get: (obj, partial = 'basic') ->
+  _get: (obj, partial) ->
     url = @urls[partial] 
     if not url
       console.error("No url defined for <#{@type}> and partial <#{partial}>")
+      obj.set '_status', 'error'
+      return
     url = url.replace /%id/, obj.id
     $.get(url)
      .success( (resp) =>
-                console.log resp, "success", arguments, obj
-                @loadOne resp, obj
+        #console.log resp, "success", arguments, obj
+        @loadOne resp, obj
      )
      .error( ->
        obj.set '_status','error'
