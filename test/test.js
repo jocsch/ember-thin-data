@@ -213,7 +213,7 @@ test("Proper array handling", function() {
     acontent: ps,
     alength: (function() {
       return ps.get('length');
-    }).property('acontent')
+    }).property('acontent.@each')
   });
   Em.run.sync();
   equal(con.get('alength'), 3, "Array is properly linked");

@@ -188,7 +188,7 @@ test "Proper array handling", ->
     acontent: ps
     alength: (->
       ps.get('length')
-    ).property('acontent')
+    ).property('acontent.@each')
   Em.run.sync()
   equal con.get('alength'), 3, "Array is properly linked"
   ps.removeAt(1)

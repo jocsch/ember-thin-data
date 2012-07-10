@@ -62,7 +62,7 @@ TD.Model = Em.Object.extend({
 TD.ModelArray = Em.ArrayProxy.extend({
   store: null,
   destroy: function() {
-    return this._super;
+    return this._super();
   },
   _observeStore: function(str, modeluid, val) {
     var i, item, _len, _ref, _results,
@@ -79,18 +79,21 @@ TD.ModelArray = Em.ArrayProxy.extend({
     }
     return _results;
   },
-  arrayDidChange: function(array, index, removed, added) {
+  _addObserver: function(item) {
+    return Ember.addObserver(this.store, Ember.guidFor(item), this, this._observeStore);
+  },
+  contentArrayDidChange: function(array, index, removed, added) {
     var item, _i, _len, _ref, _results;
     this._super(array, index, removed, added);
     _ref = array.slice(index, (index + added));
     _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       item = _ref[_i];
-      _results.push(Ember.addObserver(this.store, Ember.guidFor(item), this, this._observeStore));
+      _results.push(this._addObserver(item));
     }
     return _results;
   },
-  arrayWillChange: function(array, index, removed, added) {
+  contentArrayWillChange: function(array, index, removed, added) {
     var item, _i, _len, _ref, _results;
     this._super(array, index, removed, added);
     _ref = array.slice(index, (index + added));
@@ -100,6 +103,12 @@ TD.ModelArray = Em.ArrayProxy.extend({
       _results.push(Ember.removeObserver(this.store, Ember.guidFor(item), this, this._observeStore));
     }
     return _results;
+  },
+  init: function() {
+    this._super();
+    return this.get('content').forEach(function(item) {
+      return this._addObserver(item);
+    }, this);
   }
 });
 

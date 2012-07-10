@@ -46,7 +46,7 @@ TD.Model = Em.Object.extend
 TD.ModelArray = Em.ArrayProxy.extend
   store: null
   destroy: ->
-    @_super
+    @_super()
 
   _observeStore: (str, modeluid, val) ->
     #console.log 'notifed about change', arguments
@@ -57,16 +57,26 @@ TD.ModelArray = Em.ArrayProxy.extend
         @removeAt i
         #console.log @,i
 
-  arrayDidChange: (array, index, removed, added) ->
+  _addObserver: (item) ->
+    Ember.addObserver @store, Ember.guidFor(item), @, @_observeStore
+
+  contentArrayDidChange: (array, index, removed, added) ->
     @_super(array, index, removed, added)
     #console.log "added", (a.get('id') for a in array[index...index+added])
-    Ember.addObserver(@store, Ember.guidFor(item), @, @_observeStore) for item in array[index...index+added]
+    #Ember.addObserver(@store, Ember.guidFor(item), @, @_observeStore) for item in array[index...index+added]
+    @_addObserver(item) for item in array[index...index+added]
 
-  arrayWillChange: (array, index, removed, added) ->
+  contentArrayWillChange: (array, index, removed, added) ->
     @_super(array, index, removed, added)
-    #console.log "remove", (a.get('id') for a in array[index...index+removed])
+    #console.log "removed", (a.get('id') for a in array[index...index+removed])
     Ember.removeObserver(@store, Ember.guidFor(item), @, @_observeStore) for item in array[index...index+added]
 
+  init: ->
+    @_super()
+    #Add the store observer to the initial content
+    @get('content').forEach((item)->
+      @_addObserver item
+    , @)
 
 TD.Controller = Em.Object.extend
   store: null
