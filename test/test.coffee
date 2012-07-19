@@ -311,3 +311,13 @@ test "Partial loading", ->
 test "Partial loading without partial information", ->
   g1 = App.GController.find 1, 'foo'
   equal g1.get('_status'), 'error'
+  #undo error status because of partial loaded object
+  g1.set('_status', 'loaded')
+
+test "Objects loaded without URL should not be marked as error if they are available in the store", ->
+  simpleCon =  TD.Controller.create
+    type: App.Group
+  g1 = simpleCon.find 1
+  ok g1.get('_status') != 'error'
+  g222 = simpleCon.find 222
+  equal g222.get('_status'), 'error', 'Error should happen when the URL is not available and the object is not loaded'

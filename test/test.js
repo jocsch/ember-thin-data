@@ -359,5 +359,17 @@ test("Partial loading", function() {
 test("Partial loading without partial information", function() {
   var g1;
   g1 = App.GController.find(1, 'foo');
-  return equal(g1.get('_status'), 'error');
+  equal(g1.get('_status'), 'error');
+  return g1.set('_status', 'loaded');
+});
+
+test("Objects loaded without URL should not be marked as error if they are available in the store", function() {
+  var g1, g222, simpleCon;
+  simpleCon = TD.Controller.create({
+    type: App.Group
+  });
+  g1 = simpleCon.find(1);
+  ok(g1.get('_status') !== 'error');
+  g222 = simpleCon.find(222);
+  return equal(g222.get('_status'), 'error', 'Error should happen when the URL is not available and the object is not loaded');
 });

@@ -104,7 +104,7 @@ TD.Controller = Em.Object.extend
     else @findOne id, partial
 
   findOne: (id, partial = 'basic') ->
-    obj = @store.getById(id) 
+    obj = @store.getById(id)
     if obj and obj.get('_status') isnt 'error' and obj.get("_partial#{partial}")
       obj
     else
