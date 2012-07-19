@@ -47,9 +47,11 @@ TD.Stores = {
 };
 
 TD.Model = Em.Object.extend({
-  _partial: null,
   _status: null,
   _path: null,
+  _partialbasic: (function() {
+    return this.get('_status') === 'loaded';
+  }).property('_status'),
   init: function() {
     this._status || (this._status = 'created');
     return this._super();

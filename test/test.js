@@ -373,3 +373,20 @@ test("Objects loaded without URL should not be marked as error if they are avail
   g222 = simpleCon.find(222);
   return equal(g222.get('_status'), 'error', 'Error should happen when the URL is not available and the object is not loaded');
 });
+
+test("Partial basic is by default always true when an object is loaded", function() {
+  var simpleCon, x1;
+  App.Xyz = TD.Model.extend({
+    name: null
+  });
+  simpleCon = TD.Controller.create({
+    type: App.Xyz
+  });
+  simpleCon.load([
+    {
+      id: 1
+    }
+  ]);
+  x1 = simpleCon.find(1);
+  return equal(x1.get("_partialbasic"), true);
+});

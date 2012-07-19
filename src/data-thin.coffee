@@ -32,9 +32,9 @@ TD.Stores =
     @[guid]
 
 TD.Model = Em.Object.extend
-  _partial: null
   _status: null
   _path: null
+  _partialbasic: (-> @get('_status') == 'loaded').property '_status'
   init: ->
     #@references = Em.A []
     @_status or= 'created'
