@@ -16,7 +16,7 @@ App.Group = TD.Model.extend
     @get('name')?
   ).property 'name'
   _partialcomplete: (->
-    @get ('admins')?
+    @get('admins')?
   ).property 'name', 'admins'
 
 

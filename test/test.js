@@ -18,7 +18,7 @@ App.Group = TD.Model.extend({
     return this.get('name') != null;
   }).property('name'),
   _partialcomplete: (function() {
-    return this.get('admins' != null);
+    return this.get('admins') != null;
   }).property('name', 'admins')
 });
 
