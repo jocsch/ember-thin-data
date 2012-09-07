@@ -58,7 +58,19 @@ TD.Model = Em.Object.extend({
   },
   _path: (function() {
     return "" + (TD.Stores.getStore(this.constructor).path) + "." + (Ember.guidFor(this));
-  }).property()
+  }).property(),
+  createProxy: function() {
+    return TD.ModelReadOnlyProxy.create({
+      content: this
+    });
+  }
+});
+
+TD.ModelReadOnlyProxy = Em.ObjectProxy.extend({
+  setUnknownProperty: function(key, value) {
+    Ember.defineProperty(this, key);
+    return Ember.set(this, key, value);
+  }
 });
 
 TD.ModelArray = Em.ArrayProxy.extend({

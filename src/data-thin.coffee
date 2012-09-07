@@ -42,6 +42,15 @@ TD.Model = Em.Object.extend
   _path: (->
     "#{TD.Stores.getStore(@constructor).path}.#{Ember.guidFor @}"
     ).property()
+  createProxy: ->
+    TD.ModelReadOnlyProxy.create
+      content: @
+
+
+TD.ModelReadOnlyProxy = Em.ObjectProxy.extend
+  setUnknownProperty: (key, value) ->
+    Ember.defineProperty @, key
+    Ember.set @, key, value
 
 TD.ModelArray = Em.ArrayProxy.extend
   store: null

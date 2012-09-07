@@ -390,3 +390,23 @@ test("Partial basic is by default always true when an object is loaded", functio
   x1 = simpleCon.find(1);
   return equal(x1.get("_partialbasic"), true);
 });
+
+test("Read Only Proxy. Shields the source object from all updates -> needed e.g. for form fields", function() {
+  var g1, p1;
+  g1 = App.GController.find(1);
+  g1.set('test', 'test2');
+  p1 = g1.createProxy();
+  ok(p1);
+  equal(g1.get('id'), p1.get('id'));
+  equal(g1.get('name'), p1.get('name'));
+  equal(g1.get('test'), p1.get('test'));
+  equal(g1.get('members'), p1.get('members'));
+  p1.set('name', 'proxyname');
+  equal(p1.get('name'), 'proxyname');
+  equal(g1.get('name'), 'Group1');
+  p1.set('freak', 'test');
+  equal(p1.get('freak'), 'test');
+  equal(g1.get('freak') != null, false);
+  g1.set('test', 'test3');
+  return equal(g1.get('test'), p1.get('test'));
+});
