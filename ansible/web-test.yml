@@ -1,0 +1,13 @@
+# easy Ubuntu nginx playbook as an example.
+- hosts: web-servers
+  user: vagrant
+  sudo: True
+
+  vars:
+     #workers: use at template ansible_processor_count.
+     connections : "1024"
+
+  tasks:
+     - include: playbooks/nginx/tasks/tasks.yml
+  handlers:
+     - include: playbooks/nginx/handlers/handlers.yml
